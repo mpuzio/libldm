@@ -384,7 +384,7 @@ ldm_disk_group_finalize(GObject * const object)
 {
     LDMDiskGroup *dg = LDM_DISK_GROUP(object);
 
-    g_free(dg->priv->name); dg->priv->name = NULL;
+    if (dg->priv->name) { g_free(dg->priv->name); dg->priv->name = NULL; }
 }
 
 static void
@@ -561,11 +561,11 @@ ldm_volume_finalize(GObject * const object)
     LDMVolume * const vol_o = LDM_VOLUME(object);
     LDMVolumePrivate * const vol = vol_o->priv;
 
-    g_free(vol->name); vol->name = NULL;
-    g_free(vol->dgname); vol->dgname = NULL;
-    g_free(vol->id1); vol->id1 = NULL;
-    g_free(vol->id2); vol->id2 = NULL;
-    g_free(vol->hint); vol->hint = NULL;
+    if (vol->name) { g_free(vol->name); vol->name = NULL; }
+    if (vol->dgname) { g_free(vol->dgname); vol->dgname = NULL; }
+    if (vol->id1) { g_free(vol->id1); vol->id1 = NULL; }
+    if (vol->id2) { g_free(vol->id2); vol->id2 = NULL; }
+    if (vol->hint) { g_free(vol->hint); vol->hint = NULL; }
 }
 
 static void
@@ -784,7 +784,7 @@ ldm_partition_finalize(GObject * const object)
     LDMPartition * const part_o = LDM_PARTITION(object);
     LDMPartitionPrivate * const part = part_o->priv;
 
-    g_free(part->name); part->name = NULL;
+    if (part->name) { g_free(part->name); part->name = NULL; }
 }
 
 static void
@@ -935,9 +935,9 @@ ldm_disk_finalize(GObject * const object)
     LDMDisk * const disk_o = LDM_DISK(object);
     LDMDiskPrivate * const disk = disk_o->priv;
 
-    g_free(disk->name); disk->name = NULL;
-    g_free(disk->dgname); disk->dgname = NULL;
-    g_free(disk->device); disk->device = NULL;
+    if (disk->name) { g_free(disk->name); disk->name = NULL; }
+    if (disk->dgname) { g_free(disk->dgname); disk->dgname = NULL; }
+    if (disk->device) { g_free(disk->device); disk->device = NULL; }
 }
 
 static void
@@ -2548,7 +2548,9 @@ _dm_remove(const gchar * const name, uint32_t udev_cookie, GError ** const err)
 
     /* If a remove operation fails, try again in case it was only opened
      * transiently. */
+#ifdef HAVE_DM_TASK_RETRY_REMOVE
     dm_task_retry_remove(task);
+#endif
 
     if (!dm_task_run(task)) {
         if (_dm_err_last_errno == EBUSY) {
@@ -2614,7 +2616,7 @@ _dm_create_part(const LDMPartitionPrivate * const part, uint32_t cookie,
 static GString *
 _dm_create_spanned(const LDMVolumePrivate * const vol, GError ** const err)
 {
-    static GString *name = NULL;
+    GString *name = NULL;
     guint i = 0;
     struct dm_target *targets = g_malloc(sizeof(*targets) * vol->parts->len);
 
@@ -2681,7 +2683,7 @@ out:
 static GString *
 _dm_create_striped(const LDMVolumePrivate * const vol, GError ** const err)
 {
-    static GString *name = NULL;
+    GString *name = NULL;
     struct dm_target target;
 
     target.start = 0;
@@ -2955,12 +2957,12 @@ ldm_volume_dm_create(const LDMVolume * const o, GString **created,
 
     GString *name = _dm_vol_name(vol);
     struct dm_tree_node *node = _find_device_tree_node(tree, name->str);
+    g_string_free(name, TRUE); name = NULL;
     if (node) {
         dm_tree_free(tree); tree = NULL;
         return TRUE;
     }
     dm_tree_free(tree); tree = NULL;
-    g_string_free(name, TRUE);
 
     switch (vol->type) {
     case LDM_VOLUME_TYPE_SIMPLE:
